@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AliadoApiController;
 use App\Http\Controllers\Api\EmpresaApiController;
 use App\Http\Controllers\Api\AuthController;
-
+use Illuminate\Support\Facades\Auth;
 
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
