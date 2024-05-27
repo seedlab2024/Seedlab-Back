@@ -11,6 +11,8 @@ use App\Models\Empresa;
 use App\Models\Municipio;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EmpresaApiController extends Controller
 {
@@ -20,74 +22,103 @@ class EmpresaApiController extends Controller
     public function index()
     {
         //
-         /*muestras las empresas*/
-         if(Auth::user()->id_rol !=1){
-             return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
-         }
-         $empresa = Empresa::paginate(5);
-         return new JsonResponse($empresa->items());
-        
+        /*muestras las empresas*/
+        if (Auth::user()->id_rol != 1) {
+            return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
+        }
+        $empresa = Empresa::paginate(5);
+        return new JsonResponse($empresa->items());
     }
 
     /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-{
-    // Verificar permisos
-    if(Auth::user()->id_rol != 5){
-        return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
-    }
-
-    $nombreMunicipio = $request->input('id_municipio');
-    $municipio = Municipio::where('nombre', $nombreMunicipio)->first();
-    //dd($municipio);
-
-    if ($municipio) {
-    $id_municipio = $municipio->id;
-    } else {
-    // Manejar el caso en el que el municipio no se encuentre
-    return response()->json(["error" => "Municipio no encontrado"], 404);
-    }
-    // Crear empresa
-    $empresa = Empresa::create([
-        "nombre" => $request->nombre,
-        "documento" => $request->documento,
-        "cargo" => $request->cargo,
-        "razonSocial" => $request->razonSocial,
-        "url_pagina" => $request->url_pagina,
-        "telefono" => $request->telefono,
-        "celular" => $request->celular,
-        "direccion" => $request->direccion,
-        "correo" => $request->correo,
-        "profesion" => $request->profesion,
-        "experiencia" => $request->experiencia,
-        "funciones" => $request->funciones,
-        "id_tipo_documento" => $request->id_tipo_documento,
-        "id_municipio" => $id_municipio,
-        "id_emprendedor" => $request->id_emprendedor,
-    ]);
-
-    // Manejar apoyos
-    if ($request->filled('apoyos')) {
-        $apoyos = $request->input('apoyos');
-        foreach ($apoyos as $apoyo) {
-            $nuevoApoyo = new ApoyoEmpresa();
-            $nuevoApoyo->documento = $apoyo['documento'];
-            $nuevoApoyo->nombre = $apoyo['nombre'];
-            $nuevoApoyo->apellido = $apoyo['apellido'];
-            $nuevoApoyo->cargo = $apoyo['cargo'];
-            $nuevoApoyo->telefono = $apoyo['telefono'];
-            $nuevoApoyo->celular = $apoyo['celular'];
-            $nuevoApoyo->email = $apoyo['email'];
-            $nuevoApoyo->id_tipo_documento = $apoyo['id_tipo_documento'];
-            $nuevoApoyo->id_empresa = $empresa->id;
-            $nuevoApoyo->save();
+    {
+        // Verificar permisos de usuario
+        if (Auth::user()->id_rol != 5) {
+            return response()->json(["error" => "No tienes permisos para realizar esta acción"], 401);
         }
-    }
 
-    return response()->json(['message' => 'Empresa creada exitosamente', 'empresa' => $empresa], 200);
-}
+        // Validar datos de entrada
+        $validatedData = $request->validate([
+            'empresa.nombre' => 'required|string',
+            'empresa.documento' => 'required|string',
+            'empresa.cargo' => 'required|string',
+            'empresa.razonSocial' => 'required|string',
+            'empresa.url_pagina' => 'nullable|string',
+            'empresa.telefono' => 'required|string|max:10',
+            'empresa.celular' => 'required|string|max:13',
+            'empresa.direccion' => 'required|string|',
+            'empresa.correo' => 'required|string|email',
+            'empresa.profesion' => 'required|string',
+            'empresa.experiencia' => 'nullable|string',
+            'empresa.funciones' => 'nullable|string',
+            'empresa.id_tipo_documento' => 'required|integer',
+            'empresa.id_municipio' => 'required|string',
+            'empresa.id_emprendedor' => 'required|string',
+            'apoyos.*.documento' => 'nullable|string',
+            'apoyos.*.nombre' => 'nullable|string',
+            'apoyos.*.apellido' => 'nullable|string',
+            'apoyos.*.cargo' => 'nullable|string',
+            'apoyos.*.telefono' => 'nullable|string|max:10',
+            'apoyos.*.celular' => 'nullable|string|max:13',
+            'apoyos.*.email' => 'nullable|string|email',
+            'apoyos.*.id_tipo_documento' => 'nullable|integer',
+        ]);
+
+        // Buscar el municipio por nombre
+        $nombreMunicipio = $validatedData['empresa']['id_municipio'];
+        $municipio = Municipio::where('nombre', $nombreMunicipio)->first();
+
+        if (!$municipio) {
+            return response()->json(["error" => "Municipio no encontrado"], 404);
+        }
+
+        // Crear la empresa
+        $empresa = Empresa::create([
+            "nombre" => $validatedData['empresa']['nombre'],
+            "documento" => $validatedData['empresa']['documento'],
+            "cargo" => $validatedData['empresa']['cargo'],
+            "razonSocial" => $validatedData['empresa']['razonSocial'],
+            "url_pagina" => $validatedData['empresa']['url_pagina'],
+            "telefono" => $validatedData['empresa']['telefono'],
+            "celular" => $validatedData['empresa']['celular'],
+            "direccion" => $validatedData['empresa']['direccion'],
+            "correo" => $validatedData['empresa']['correo'],
+            "profesion" => $validatedData['empresa']['profesion'],
+            "experiencia" => $validatedData['empresa']['experiencia'],
+            "funciones" => $validatedData['empresa']['funciones'],
+            "id_tipo_documento" => $validatedData['empresa']['id_tipo_documento'],
+            "id_municipio" => $municipio->id,
+            "id_emprendedor" => $validatedData['empresa']['id_emprendedor'],
+        ]);
+
+        // Manejar apoyos
+        $apoyos = [];
+        if ($request->has('apoyos')) {
+            foreach ($validatedData['apoyos'] as $apoyo) {
+                $nuevoApoyo = ApoyoEmpresa::create([
+                    "documento" => $apoyo['documento'],
+                    "nombre" => $apoyo['nombre'],
+                    "apellido" => $apoyo['apellido'],
+                    "cargo" => $apoyo['cargo'],
+                    "telefono" => $apoyo['telefono'],
+                    "celular" => $apoyo['celular'],
+                    "email" => $apoyo['email'],
+                    "id_tipo_documento" => $apoyo['id_tipo_documento'],
+                    "id_empresa" => $empresa->documento,
+                ]);
+                $apoyos[] = $nuevoApoyo;
+            }
+        }
+
+        return response()->json([
+            'message' => 'Empresa y apoyoEmpresa creados exitosamente',
+            'empresa' => $empresa,
+            'apoyos' => $apoyos
+        ], 200);
+    }
 
 
 
@@ -96,9 +127,8 @@ class EmpresaApiController extends Controller
      */
     public function show($id_emprendedor)
     {
-        
     }
-    
+
 
     /**
      * Update the specified resource in storage.
@@ -106,31 +136,31 @@ class EmpresaApiController extends Controller
     public function update(Request $request, $documento)
     {
         // edita la empresa/edita y agrega apoyos 
-        if(Auth::user()->id_rol !=5){
+        if (Auth::user()->id_rol != 5) {
             return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
         }
 
         $empresa = Empresa::find($documento);
-      
+
         if (!$empresa) {
             return response()->json([
                 'message' => 'Empresa no encontrada'
             ], 404);
         }
-           
+
         $empresa->update($request->all());
-    
-        
+
+
         if ($request->filled('apoyoxempresa')) {
             foreach ($request->apoyoxempresa as $apoyoData) {
                 if (isset($apoyoData['documento'])) {
-                    
+
                     $apoyo = ApoyoEmpresa::where('documento', $apoyoData['documento'])->first();
                     if ($apoyo) {
-                        
+
                         $apoyo->update($apoyoData);
                     } else {
-                        
+
                         $nuevoApoyo = new ApoyoEmpresa($apoyoData);
                         $nuevoApoyo->id_empresa = $empresa->documento;
                         $nuevoApoyo->save();
@@ -138,10 +168,10 @@ class EmpresaApiController extends Controller
                 }
             }
         }
-    
+
         return response()->json(["message" => "Empresa actualizada"], 200);
     }
-    
+
 
 
     /**
@@ -188,5 +218,4 @@ class EmpresaApiController extends Controller
  * }
  * 
  * 
-*/
-
+ */
