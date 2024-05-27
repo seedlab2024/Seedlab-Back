@@ -114,9 +114,6 @@ class OrientadorApiController extends Controller
 
     public function listarAliados()
 {   
-    if(Auth::user()->id_rol!=2){
-        return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
-    }
     $usuarios = User::where('estado', true)
                     ->where('id_rol', 3)
                     ->pluck('id');
