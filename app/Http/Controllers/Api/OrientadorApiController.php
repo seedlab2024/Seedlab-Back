@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Asesoria;
 use App\Models\Aliado;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 
 class OrientadorApiController extends Controller
 {
