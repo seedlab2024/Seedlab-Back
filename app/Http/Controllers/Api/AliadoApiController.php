@@ -197,23 +197,75 @@ class AliadoApiController extends Controller
     }
 
     public function dashboardAliado($idAliado){
-        //CONTAR ASESORIASxALIADO SEGUN SU ESTADO (ACTIVAS O FINALIZADAS)
+        //CONTAR ASESORIASxALIADO SEGUN SU ESTADO (PENDIENTES O FINALIZADAS)
         $finalizadas = Asesoria::where('id_aliado', $idAliado)->whereHas('horarios', function($query) {
             $query->where('estado', 'Finalizada');
         })->count();
 
-        $activas = Asesoria::where('id_aliado', $idAliado)->whereHas('horarios', function($query) {
-            $query->where('estado', 'Activa');
+        $pendientes = Asesoria::where('id_aliado', $idAliado)->whereHas('horarios', function($query) {
+            $query->where('estado', 'Pendiente');
         })->count();
         
         //CONTAR # DE ASESORES DE ESE ALIADO
         $numAsesores = Asesor::where('id_aliado', $idAliado)->count();
 
+        $totalAsesorias = $finalizadas + $pendientes;
+
+        // Calcular los porcentajes
+         // Calcular los porcentajes
+    $porcentajeFinalizadas = $totalAsesorias > 0 ? round(($finalizadas / $totalAsesorias) * 100, 2) . '%' : 0;
+    $porcentajePendientes = $totalAsesorias > 0 ? round(($pendientes / $totalAsesorias) * 100, 2) .'%' : 0;
+    
         return response()->json([
+            'Asesorias Pendientes' => $pendientes,
+            'Porcentaje Pendientes' => $porcentajePendientes,
             'Asesorias Finalizadas' => $finalizadas,
-            'Asesorias Activas' => $activas,
+            'Porcentaje Finalizadas' => $porcentajeFinalizadas,
             'Mis Asesores' => $numAsesores,
         ]);
+    }
+
+    public function gestionarAsesoria(Request $request)
+{
+    if (Auth::user()->id_rol != 3) {
+        return response()->json(["error" => "No tienes permisos para realizar esta acción"], 401);
+    }
+
+    $asesoriaId = $request->input('id_asesoria');
+    $accion = $request->input('accion'); // aceptar o rechazar
+
+    $asesoria = Asesoria::find($asesoriaId);
+
+    if (!$asesoria || $asesoria->id_aliado != Auth::user()->aliado->id) {
+        return response()->json(['message' => 'Asesoría no encontrada o no asignada a este aliado'], 404);
+    }
+
+    /*$horario = HorarioAsesoria::where('id_asesoria', $asesoriaId)->first();
+    if (!$horario) {
+        return response()->json(['message' => 'No se encontró un horario para esta asesoría'], 404);
+    }*/
+
+    /*if ($accion === 'aceptar') {
+        $horario->estado = 'aceptada';
+        $mensaje = 'Asesoría aceptada correctamente';
+    } 
+    */
+    elseif ($accion === 'rechazar') {
+        //$horario->estado = 'rechazada';
+        $asesoria->id_aliado = null;  // Establecer id_aliado a null
+        $asesoria->isorientador = true;
+        $asesoria->save(); // Guardar cambios en la asesoria
+        $mensaje = 'Asesoría rechazada correctamente';
+    } else {
+        return response()->json(['message' => 'Acción no válida'], 400);
+    }
+
+    //$horario->save();
+
+    return response()->json(['message' => $mensaje], 200);
+}
+
+    public function eliminarAsesoria(){
 
     }
 
