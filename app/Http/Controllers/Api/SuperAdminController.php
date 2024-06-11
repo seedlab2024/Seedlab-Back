@@ -15,28 +15,19 @@ use App\Models\User;
 use App\Models\Rol;
 use App\Models\Asesoria;
 use App\Models\Aliado;
+use Exception;
 
 class SuperAdminController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function verEmprendedoresxEmpresa()
-    {
-        if(Auth::user()->id_rol != 1){
-            return response()->json([
-               'message' => 'No tienes permiso para acceder a esta ruta'
-            ], 401);
-        }
-
-        $emprendedoresConEmpresas = Emprendedor::with('empresas')->get();
-        
-        return response()->json($emprendedoresConEmpresas);
-    }
+   
 
 
     public function personalizacionSis(Request $request)
     {
+        
         if(Auth::user()->id_rol != 1){
             return response()->json([
                'message' => 'No tienes permiso para acceder a esta ruta'
@@ -104,39 +95,91 @@ class SuperAdminController extends Controller
         //
     }
 
+    public function userProfileAdmin($id){
+        try {
+            if (Auth::user()->id_rol!=1) {
+                return response()->json(['message'=>'no tienes permiso para esta funcion']);
+            }
+            $admin = SuperAdmin::where('id',$id)
+            ->with('auth:id,email')
+            ->select('id','nombre','apellido',"id_autentication")
+            ->first();
+            return response()->json($admin);
+        } catch (Exception $e) {
+            return response()->json(['error' => 'Ocurrió un error al procesar la solicitud: ' . $e->getMessage()], 500);
+         }
+    }
+
+
+
+
+
+
+
+
+
+
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function editarSuperAdmin(Request $request, $id)
     {
-     //
+        try {
+            if (Auth::user()->id_rol !=1) {
+                return response()->json(['message'=>'no tienes permiso para esta funcion']);
+            }
+            $admin = SuperAdmin::find($id);
+            if ($admin) {
+                $admin->nombre=$request->input('nombre');
+                $admin->apellido=$request->input('apellido');
+                $admin->save();
+
+                if ($admin->auth) {
+                    $user=$admin->auth;
+                    $password = $request->input('password');
+                    if (strlen($password)<8) {
+                        $response = 'la contraseña debe ser al menos de 8 caracteres';
+                        return response()->json(['message'=>$response]);
+                    }
+                    $user->email = $request->input('email');
+                    $user->password =  Hash::make($request->input('password'));
+                    $user->estado=$request->input('estado');
+                    $user->save();
+                }
+                return response()->json(['messaje'=>'Superadministrador actualizado correctamente'],200);
+            }else{
+                return response()->json(['message'=>'Superadministrador no encontrado'], 404);
+            }
+        } catch (Exception $e) {
+            return response()->json(['error' => 'Ocurrió un error al procesar la solicitud: ' . $e->getMessage()], 500);
+         }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
-    {
-        if(Auth::user()->id_rol !=1){
-            return response()->json([
-               'message' => 'No tienes permiso para acceder a esta ruta'
-            ], 401);
-        }
+    // public function destroy($id)
+    // {
+    //     if(Auth::user()->id_rol !=1){
+    //         return response()->json([
+    //            'message' => 'No tienes permiso para acceder a esta ruta'
+    //         ], 401);
+    //     }
 
-        $superAdmin = SuperAdmin::find($id);
-        if(!$superAdmin){
-            return response()->json([
-               'message' => 'SuperAdmin no encontrado'
-            ], 404);
-        }
+    //     $superAdmin = SuperAdmin::find($id);
+    //     if(!$superAdmin){
+    //         return response()->json([
+    //            'message' => 'SuperAdmin no encontrado'
+    //         ], 404);
+    //     }
 
-        $user = $superAdmin->auth;
-        $user->estado = 0;
-        $user->save();
+    //     $user = $superAdmin->auth;
+    //     $user->estado = 0;
+    //     $user->save();
 
-        return response()->json(['message' =>'SuperAdmin desactivado'], 200);
+    //     return response()->json(['message' =>'SuperAdmin desactivado'], 200);
        
-    }
+    // }
 
     public function enumerarUsuarios() {
         $roles = Rol::all();
