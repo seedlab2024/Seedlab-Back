@@ -80,8 +80,9 @@ class AsesorApiController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            $asesor = Asesor::find($id);
+            //dd($request->estado);
             if (Auth::user()->id_rol == 4) {
-                $asesor = Asesor::find($id);
                 $asesor->update([
                     'nombre' => $request->nombre,
                     'apellido' => $request->apellido,
@@ -90,6 +91,23 @@ class AsesorApiController extends Controller
                 ]);
                 return response()->json(['message' => 'Asesor actualizado', 200]);
             }
+            if(Auth::user()->id_rol == 3){
+                $user = $asesor->auth;
+                $asesor->update([
+                    'nombre' => $request->nombre,
+                    'apellido' => $request->apellido,
+                    'celular' => $request->celular
+                ]);
+                
+                $password = $request->input('password');
+                    if ($password) {
+                        $user->password =  Hash::make($request->input('password'));
+                    }
+                    $user->email = $request->input('email');
+                    $user->estado = $request->input('estado');
+                    $user->save();
+                return response()->json(['message' => 'Asesor actualizado', 200]);
+                }
             return response()->json([
                 'message' => 'No tienes permisos para realizar esta acción'
             ], 403);
@@ -199,10 +217,19 @@ class AsesorApiController extends Controller
                 return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
             }
             $asesor = Asesor::where('id', $id)
-                ->with('auth:id,email')
-                ->select('nombre', 'apellido', 'celular', "id_autentication")
+                //->with('auth:id,email,estado')
+                ->select('id','nombre', 'apellido', 'celular', "id_autentication")
                 ->first();
-            return response()->json($asesor);
+                return [
+                    'id'=>$asesor->id,
+                    'nombre'=>$asesor->nombre,
+                    'apellido'=>$asesor->apellido,
+                    'celular'=>$asesor->celular,
+                    'email'=>$asesor->auth->email,
+                    'estado'=>$asesor->auth->estado == 1 ? 'Activo': 'Inactivo',
+                    //'id_autentication' =>$asesor->auth->id_autentication    
+                ];
+            //return response()->json($asesor);
         } catch (Exception $e) {
             return response()->json(['error' => 'Ocurrió un error al procesar la solicitud: ' . $e->getMessage()], 500);
         }

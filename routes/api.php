@@ -34,9 +34,9 @@ Route::group([
     Route::post('/register_em', [AuthController::class, 'register'])->name('register');
     Route::post('/validate_email_em', [AuthController::class, 'validate_email'])->name('validate_email');
     Route::post('/send-reset-password', [AuthController::class, "enviarRecuperarContrasena"]);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 
-Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
 
 //Empresa
 Route::group([
@@ -52,7 +52,7 @@ Route::group([
     'middleware' => 'auth:api'
 ], function (){
     Route::apiResource('/emprendedor',EmprendedorApiController::class);
-    Route::get('userProfile/{documento}', [AuthController::class, 'userProfile']);
+    Route::get('/userProfile/{documento}', [AuthController::class, 'userProfile']);
 });
 
 //Orientador
@@ -156,6 +156,7 @@ Route::group([
     Route::apiResource('/respuestas',RespuestasApiController::class);
 });
 
+Route::get('/respuestas_empresa/{id_empresa}', [RespuestasApiController::class, 'getAnswers']);
 
 
 

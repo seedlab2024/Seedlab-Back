@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Passport\Token;
 
 class EmprendedorApiController extends Controller
 {
@@ -72,6 +73,7 @@ class EmprendedorApiController extends Controller
             'id_municipio' => 'required|string|max:255', // Validar el nombre del municipio
             'id_tipo_documento' => 'required|integer',
             'password' => 'nullable|string|min:8',
+            
         ]);
 
         if ($validator->fails()) {
@@ -93,29 +95,29 @@ class EmprendedorApiController extends Controller
         $emprendedor->id_municipio = $municipio->id;
         $emprendedor->id_tipo_documento = $request->id_tipo_documento;
 
-// Verificar si se proporcionó una contraseña para actualizar
-if ($request->has('password')) {
-    if (strlen($request->password) < 8) {
-        return response()->json(["error" => "La contraseña debe tener al menos 8 caracteres"], 400);
-    }
-    $emprendedor->load('auth');
-    // Verificar si existe un usuario asociado al emprendedor
-    if ($emprendedor->auth) {
-        $user = $emprendedor->auth;
-        // Verificar si la nueva contraseña es diferente de la contraseña actual
-        if (Hash::check($request->password, $user->password)) {
-            return response()->json(["error" => "La nueva contraseña no puede ser igual a la contraseña actual"], 400);
+        // Verificar si se proporcionó una contraseña para actualizar
+        if ($request->has('password')) {
+            if (strlen($request->password) < 8) {
+                return response()->json(["error" => "La contraseña debe tener al menos 8 caracteres"], 400);
+            }
+            $emprendedor->load('auth');
+            // Verificar si existe un usuario asociado al emprendedor
+            if ($emprendedor->auth) {
+                $user = $emprendedor->auth;
+                // Verificar si la nueva contraseña es diferente de la contraseña actual
+                if (Hash::check($request->password, $user->password)) {
+                    return response()->json(["error" => "La nueva contraseña no puede ser igual a la contraseña actual"], 400);
+                }
+                // Actualizar la contraseña en el modelo User asociado al Emprendedor
+                $user->password = Hash::make($request->password);
+                $user->save();
+            } else {
+                return response()->json(["error" => "No se encontró un usuario asociado al emprendedor"], 404);
+            }
         }
-        // Actualizar la contraseña en el modelo User asociado al Emprendedor
-        $user->password = Hash::make($request->password);
-        $user->save();
-    } else {
-        return response()->json(["error" => "No se encontró un usuario asociado al emprendedor"], 404);
+            $emprendedor->save();
+            return response()->json(['message' => 'Datos del emprendedor actualizados correctamente'], 200);
     }
-}
-    $emprendedor->save();
-    return response()->json(['message' => 'Datos del emprendedor actualizados correctamente'], 200);
-}
 
 
 
@@ -145,12 +147,11 @@ if ($request->has('password')) {
         //dd($user);
         $user->estado = 0;
         $user->save();
-
+        
+        
         $emprendedor->email_verified_at = null;
         $emprendedor->save();
-
-        return response()->json([
-            'message' => 'Emprendedor desactivado exitosamente',
-        ], 200);
+            
+        return response()->json(['message' => 'Emprendedor desactivado exitosamente. Por favor, inicie sesión de nuevo.'], 200);
     }
 }
