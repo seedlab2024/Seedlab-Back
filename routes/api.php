@@ -22,6 +22,10 @@ use App\Http\Controllers\Api\RespuestasApiController;
 use App\Models\Asesoria;
 
 
+
+
+
+
 //Rutas de login y registro
 Route::group([
     'prefix' => 'auth'
@@ -44,6 +48,7 @@ Route::group([
 
 //Emprendedor
 Route::group([
+    'prefix' => 'emprendedor',
     'middleware' => 'auth:api'
 ], function (){
     Route::apiResource('/emprendedor',EmprendedorApiController::class);
@@ -76,6 +81,7 @@ Route::group([
     Route::get('/averageAsesorias2024', [SuperAdminController::class, 'averageAsesorias2024']);
     Route::get('/contar-usuarios', [SuperAdminController::class, 'enumerarUsuarios']);
     Route::get('/perfilAdmin/{id}', [SuperAdminController::class, 'userProfileAdmin']);
+    Route::get('/mostrarSuperAdmins', [SuperAdminController::class, 'mostrarSuperAdmins']);
 });
 
    
@@ -93,7 +99,6 @@ Route::group([
     Route::get('/mostrarAsesorAliado/{id}', [AliadoApiController::class, 'mostrarAsesorAliado'])->name('MostrarAsesorAliado');
     Route::delete('/{id}', [AliadoApiController::class, 'destroy'])->name('desactivarAliado');
     Route::post('/create_aliado', [AliadoApiController::class, 'crearAliado'])->name('crearaliado');
-    Route::post('/asesoria/gestionar', [AliadoApiController::class, 'gestionarAsesoria']);
     Route::put('/editarAsesorAliado/{id}', [AliadoApiController::class,'editarAsesorXaliado'])->name('EditarAsesorAliado');
     Route::get('/dashboardAliado/{idAliado}', [AliadoApiController::class,'dashboardAliado']);
     Route::get('/emprendedores&empresa',[AliadoApiController::class,'verEmprendedoresxEmpresa']);
@@ -138,6 +143,8 @@ Route::group([
     Route::post('/{idAsesoria}/asignar-aliado', [AsesoriasController::class, 'asignarAliado']); // dar aliado a asesoria - orientador
     Route::get('/mostrarAsesorias/{id}/{asignacion}', [AsesoriasController::class, 'MostrarAsesorias'])->name('MostrarAsesorias'); //ver asesorias de aliado
     Route::get('/asesores_disponibles/{idaliado}', [AsesoriasController::class, 'listarasesoresdisponibles'])->name('listarasesoresdisponibles'); //ver asesores disponibles por aliado
+    Route::post('/gestionar', [AliadoApiController::class, 'gestionarAsesoria']);
+
 });
 
 //Respuestas formulario
