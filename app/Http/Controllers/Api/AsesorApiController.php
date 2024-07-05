@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Asesor;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
@@ -80,16 +81,67 @@ class AsesorApiController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            if (Auth::user()->id_rol == 4) {
-                $asesor = Asesor::find($id);
+            $asesor = Asesor::find($id);
+            //dd($request->estado);
+            if (Auth::user()->id_rol == 4 ) {
+
+                $newCelular = $request->input('celular');
+                    if ($newCelular && $newCelular !== $asesor->celular) {
+                        // Verificar si el nuevo email ya está en uso
+                        $existing = Asesor::where('celular', $newCelular)->first();
+                        if ($existing) {
+                            return response()->json(['message' => 'El numero de celular ya ha sido registrado anteriormente'], 400);
+                        }
+                        $asesor->celular = $newCelular;
+                    }
+
                 $asesor->update([
                     'nombre' => $request->nombre,
                     'apellido' => $request->apellido,
                     'celular' => $request->celular,
                     //'email' => $request->email, no se sabe si pueda editar 
                 ]);
+                
                 return response()->json(['message' => 'Asesor actualizado', 200]);
             }
+            if(Auth::user()->id_rol == 3){
+                $user = $asesor->auth;
+
+                $newCelular = $request->input('celular');
+                if ($newCelular && $newCelular !== $asesor->celular) {
+                    // Verificar si el nuevo email ya está en uso
+                    $existing = Asesor::where('celular', $newCelular)->first();
+                    if ($existing) {
+                        return response()->json(['message' => 'El numero de celular ya ha sido registrado anteriormente'], 400);
+                    }
+                    $asesor->celular = $newCelular;
+                }
+                $asesor->update([
+                    'nombre' => $request->nombre,
+                    'apellido' => $request->apellido,
+                    'celular' => $request->celular
+                ]);
+
+                
+                $password = $request->input('password');
+                    if ($password) {
+                        $user->password =  Hash::make($request->input('password'));
+                    }
+
+                    $newEmail = $request->input('email');
+                    if ($newEmail && $newEmail !== $user->email) {
+                        // Verificar si el nuevo email ya está en uso
+                        $existingUser = User::where('email', $newEmail)->first();
+                        if ($existingUser) {
+                            return response()->json(['message' => 'El correo electrónico ya ha sido registrado anteriormente'], 400);
+                        }
+                        $user->email = $newEmail;
+                    }
+
+                    $user->estado = $request->input('estado');
+                    $user->save();
+                return response()->json(['message' => 'Asesor actualizado', 200]);
+                }
             return response()->json([
                 'message' => 'No tienes permisos para realizar esta acción'
             ], 403);
@@ -199,10 +251,19 @@ class AsesorApiController extends Controller
                 return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
             }
             $asesor = Asesor::where('id', $id)
-                ->with('auth:id,email')
-                ->select('nombre', 'apellido', 'celular', "id_autentication")
+                //->with('auth:id,email,estado')
+                ->select('id','nombre', 'apellido', 'celular', "id_autentication")
                 ->first();
-            return response()->json($asesor);
+                return [
+                    'id'=>$asesor->id,
+                    'nombre'=>$asesor->nombre,
+                    'apellido'=>$asesor->apellido,
+                    'celular'=>$asesor->celular,
+                    'email'=>$asesor->auth->email,
+                    'estado'=>$asesor->auth->estado == 1 ? 'Activo': 'Inactivo',
+                    //'id_autentication' =>$asesor->auth->id_autentication    
+                ];
+            //return response()->json($asesor);
         } catch (Exception $e) {
             return response()->json(['error' => 'Ocurrió un error al procesar la solicitud: ' . $e->getMessage()], 500);
         }

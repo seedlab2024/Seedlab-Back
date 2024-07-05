@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Actividad;
+use App\Models\Aliado;
+use App\Models\TipoDato;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,6 +50,7 @@ class ActividadController extends Controller
             'id_tipo_dato' => 'required|integer|exists:tipo_dato,id',
             'id_asesor' => 'required|integer|exists:asesor,id',
             'id_ruta' => 'required|integer|exists:ruta,id',
+            'id_aliado'=> 'required|integer|exists:aliado,id'
         ]);
 
         // Verificar si la actividad ya existe
@@ -57,7 +60,8 @@ class ActividadController extends Controller
             ['ruta_multi', $validatedData['ruta_multi']],
             ['id_tipo_dato', $validatedData['id_tipo_dato']],
             ['id_asesor', $validatedData['id_asesor']],
-            ['id_ruta', $validatedData['id_ruta']]
+            ['id_ruta', $validatedData['id_ruta']],
+            ['id_aliado', $validatedData['id_aliado']]
         ])->first();
 
         if ($existingActividad) {
@@ -71,6 +75,7 @@ class ActividadController extends Controller
             'id_tipo_dato' => $validatedData['id_tipo_dato'],
             'id_asesor' => $validatedData['id_asesor'],
             'id_ruta' => $validatedData['id_ruta'],
+            'id_aliado'=> $validatedData['id_aliado']
         ]);
 
         return response()->json(['message' => 'Actividad creada con éxito'], 201);
@@ -93,6 +98,8 @@ class ActividadController extends Controller
             return response()->json($actividad, 200);
         }
     }
+
+
 
     /**
      * Show the form for editing the specified resource.
@@ -168,5 +175,28 @@ class ActividadController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function tipoDato(){
+        if (Auth::user()->id_rol !=3 && Auth::user()->id_rol !=4) {
+            return response()->json([
+                'messaje'=>'No tienes permisos para acceder a esta ruta'
+            ],401);
+        }
+        $dato= TipoDato::get(['id','nombre']);
+        return response()->json($dato);
+    }
+
+    public function VerActividadAliado($id){
+        if (Auth::user()->id_rol!=3 && Auth::user()->id_rol !=4) {
+            return response()->json([
+                'messaje'=>'No tienes permisos para acceder a esta ruta'
+            ],401);
+        }
+        $actividades = Actividad::where('id_aliado', $id)
+                    ->select('id', 'nombre', 'descripcion','ruta_multi','id_tipo_dato','id_asesor','id_ruta',)
+                    ->get();
+            return response()->json($actividades);
+
     }
 }

@@ -78,11 +78,16 @@ class SuperAdminController extends Controller
 
             if (!empty($results)) {
                 $response = $results[0]->mensaje;
+                //dd($response);
                 if ($response === 'El correo electrónico ya ha sido registrado anteriormente') {
                     $statusCode = 400;
                 }
+                if ($response === 'Superadmin creado exitosamente') {
+                    $statusCode = 200;
+                }
             }
         });
+        //return response()->json(['message' => 'SuperAdministrador creado exitosamente'], 200);
 
         return response()->json(['message' => $response], $statusCode);
     }
@@ -176,20 +181,35 @@ class SuperAdminController extends Controller
 
                 if ($admin->auth) {
                     $user = $admin->auth;
+
                     $password = $request->input('password');
                     if ($password) {
                         $user->password =  Hash::make($request->input('password'));
                     }
-                    $user->email = $request->input('email');
+                    
+                    $newEmail = $request->input('email');
+                    if ($newEmail && $newEmail !== $user->email) {
+                        // Verificar si el nuevo email ya está en uso
+                        $existingUser = User::where('email', $newEmail)->first();
+                        if ($existingUser) {
+                            return response()->json(['message' => 'El correo electrónico ya ha sido registrado anteriormente'], 400);
+                        }
+                        $user->email = $newEmail;
+                    }
+                    // $user->email = $request->input('email');
+                    // //  if ($user->email) {
+                    // //      return response()->json(['message'=>'El correo electrónico ya ha sido registrado anteriormente'],501);
+                    // //  }
+                    // //dd($user->email);
                     $user->estado = $request->input('estado');
                     $user->save();
                 }
-                return response()->json(['messaje' => 'Superadministrador actualizado correctamente'], 200);
+                return response()->json(['message' => 'Superadministrador actualizado correctamente'], 200);
             } else {
                 return response()->json(['message' => 'Superadministrador no encontrado'], 404);
             }
         } catch (Exception $e) {
-            return response()->json(['error' => 'Ocurrió un error al procesar la solicitud: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Ocurrió un error al procesar la solicitud: '], 500);
         }
     }
 

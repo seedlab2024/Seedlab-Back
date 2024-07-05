@@ -18,12 +18,15 @@ class Actividad extends Model
         'id_tipo_dato',
         'id_asesor',
         'id_ruta',
+        'id_aliado'
     ];
 
     public function tiposDatos(){
         return $this->belongsTo(TipoDato::class, 'id_tipo_dato');
     }
-
+    public function aliado(){
+        return $this->belongsTo(Aliado::class, 'id_aliado');
+    }
     public function asesor(){
         return $this->belongsTo(Asesor::class, 'id_asesor');
     }

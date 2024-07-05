@@ -15,29 +15,42 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
+use Laravel\Passport\Token;
 
 class AuthController extends Controller
 {
 
     public function login(Request $request)
     {
-        $user = User::where('email', $request->email)->first();
-        
+
+        $user = User::where('email', $request->email)->with('emprendedor')->first();
+        //dd($user->estado);
+
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Revisa tus credenciales de acceso'], 401);
-        } 
+        }
+
+        if($user->id_rol == 5 && $user->emprendedor->email_verified_at){
+            $user->estado = 1;
+            $user->save();
+        }
+        
+ 
+        //Que el campo de verificacion de email del rol emprendedor no sea nullo
         if ($user->id_rol == 5 && !$user->emprendedor->email_verified_at) {
             $verificationCode = mt_rand(10000, 99999);
             $user->emprendedor->cod_ver = $verificationCode;
             $user->emprendedor->save();
             Mail::to($user['email'])->send(new VerificationCodeEmail($verificationCode));
-            return response()->json(['message' => 'Por favor verifique su correo electronico'], 307);
+            return response()->json(['message' => 'Por favor verifique su correo electronico'], 409);
         }
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->token;
         $token->save();
+        //$token->expires_at = Carbon::now()->addMinutes(60);
+
         $additionalInfo = $this->getAdditionalInfo($user);
-        $info = [];
+        //$info = [];
         return response()->json([
             'access_token' => $tokenResult->accessToken,
             'token_type' => 'Bearer',
@@ -100,20 +113,50 @@ class AuthController extends Controller
             return response()->json(["error" => "No tienes permisos para acceder a esta ruta"], 401);
         }
         $emprendedor = Emprendedor::where('documento', $documento)
-            ->with('auth:id,email')
+            //->with('auth:id,email,estado')
             ->select('nombre', 'apellido', 'documento', 'celular', 'genero', 'fecha_nac', 'direccion', 'id_municipio', 'id_autentication', 'id_tipo_documento')
             ->first();
-        return response()->json($emprendedor);
+            return[
+                'id'=>$emprendedor->auth->id,
+                'nombre'=>$emprendedor->nombre,
+                'apellido'=>$emprendedor->apellido,
+                'documento'=>$emprendedor->documento,
+                'celular'=>$emprendedor->celular,
+                'genero'=>$emprendedor->genero,
+                'fecha_nac'=>$emprendedor->fecha_nac,
+                'direccion'=>$emprendedor->direccion,
+                'id_municipio'=>$emprendedor->id_municipio,
+                'id_autentication'=>$emprendedor->id_autentication,
+                'id_tipo_documento'=>$emprendedor->id_tipo_documento,
+                'email'=>$emprendedor->auth->email,
+                'estado'=>$emprendedor->auth->estado == 1 ? 'Activo': 'Inactivo',
+            ];
+
+        //return response()->json($emprendedor);
     }
 
     public function logout(Request $request)
-    {
-        $request->user()->token()->revoke();
+{
+    // Obtener el usuario autenticado
+    $user = $request->user();
+
+    if ($user) {
+        // Obtener y eliminar todos los tokens del usuario
+        $tokens = Token::where('user_id', $user->id)->get();
+        foreach ($tokens as $token) {
+            $token->delete();
+        }
 
         return response()->json([
             'message' => 'Successfully logged out',
         ]);
     }
+
+    return response()->json([
+        'message' => 'User not found',
+    ], 404);
+}
+
 
     protected function existeusuario($documento)
     {

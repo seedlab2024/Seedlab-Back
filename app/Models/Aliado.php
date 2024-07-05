@@ -15,6 +15,7 @@ class Aliado extends Model
         'nombre',
         'descripcion',
         'logo',
+        'banner',
         'ruta_multi',
         'id_autentication',
         'id_tipo_dato'
@@ -38,6 +39,10 @@ class Aliado extends Model
     public function asesoria()
     {
         return $this->hasMany(Asesoria::class, 'id_aliado');
+    }
+
+    public function actividad(){
+        return $this->hasMany(Actividad::class, 'id_aliado');
     }
 
 }
