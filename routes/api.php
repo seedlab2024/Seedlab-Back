@@ -82,6 +82,7 @@ Route::group([
     Route::get('/contar-usuarios', [SuperAdminController::class, 'enumerarUsuarios']);
     Route::get('/perfilAdmin/{id}', [SuperAdminController::class, 'userProfileAdmin']);
     Route::get('/mostrarSuperAdmins', [SuperAdminController::class, 'mostrarSuperAdmins']);
+    Route::get('/asesor-aliado', [SuperAdminController::class,'asesorConAliado']);
 });
 
    
@@ -102,6 +103,7 @@ Route::group([
     Route::put('/editarAsesorAliado/{id}', [AliadoApiController::class,'editarAsesorXaliado'])->name('EditarAsesorAliado');
     Route::get('/dashboardAliado/{idAliado}', [AliadoApiController::class,'dashboardAliado']);
     Route::get('/emprendedores&empresa',[AliadoApiController::class,'verEmprendedoresxEmpresa']);
+    Route::get('/generoAliado',[AliadoApiController::class,'generos']);
     
 });
 
