@@ -3,47 +3,58 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Respuesta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 class FormResponsesController extends Controller
 {
+    
     public function storeSection(Request $request, $sectionId, $id_empresa)
     {
+        // Buscar o crear el registro con verform_pr = 1
+        $registro = Respuesta::firstOrNew([
+            'id_empresa' => $id_empresa,
+            'verform_pr' => 1
+        ]);
 
-        $key = "form:{$id_empresa}:section:{$sectionId}"; // Crea una clave única para cada sección del formulario
+        // En caso de que no exista, firstOrNew te dará un modelo nuevo en memoria
+        // Asegúrate de setear verform_pr = 1 explícitamente
+        $registro->verform_pr = 1;
 
-        // Guardar los datos de la sección en Redis con una caducidad de 5 días (432000 segundos)
-        Redis::setex($key, 432000, $request->getContent());
+        // Decodificar, fusionar, etc.
+        $sections = json_decode($registro->respuestas_json, true) ?? [];
+        $sections["section_{$sectionId}"] = $request->input('respuestas');
+        $registro->respuestas_json = json_encode($sections);
 
-        return response()->json(['message' => 'Sección guardada correctamente'], 200);
+        $registro->save();
+
+        return response()->json(['message' => "Sección $sectionId guardada correctamente"], 200);
     }
 
-    public function getAllRespuestasFromRedis($id_empresa)
+
+
+    public function getAllRespuestasFromDB($id_empresa)
     {
-        // Buscar secciones en Redis
-        $seccion1 = Redis::get("form:{$id_empresa}:section:1");
-        $seccion2 = Redis::get("form:{$id_empresa}:section:2");
-        $seccion3 = Redis::get("form:{$id_empresa}:section:3");
-        $seccion4 = Redis::get("form:{$id_empresa}:section:4");
-        $seccion5 = Redis::get("form:{$id_empresa}:section:5");
+        $respuesta = Respuesta::where('id_empresa', $id_empresa)
+            ->where('verform_pr', 1)
+            ->first();
 
-        // Verificar si al menos una de las secciones tiene datos
-        if ($seccion1 || $seccion2 || $seccion3 || $seccion4 || $seccion5) {
-            // Decodificar el JSON almacenado, si existe
-            return response()->json([
-                'seccion1' => $seccion1 ? json_decode($seccion1, true) : [],
-                'seccion2' => $seccion2 ? json_decode($seccion2, true) : [],
-                'seccion3' => $seccion3 ? json_decode($seccion3, true) : [],
-                'seccion4' => $seccion4 ? json_decode($seccion4, true) : [],
-                'seccion5' => $seccion5 ? json_decode($seccion5, true) : [],
-            ]);
-        } else {
-            // Si no se encontraron datos, devolver un error
-            return response()->json([
-                'error' => 'No se encontraron datos para la empresa especificada.',
-            ], 404); // Código de respuesta HTTP 404 - No encontrado
+        if (!$respuesta) {
+            return response()->json(['message' => 'No hay respuestas guardadas aún.'], 404);
         }
-    }
 
+        $sections = json_decode($respuesta->respuestas_json, true);
+
+        // Transformar claves de "section_1" a "seccion1", etc.
+        $transformed = [];
+        foreach ($sections as $key => $value) {
+            $newKey = str_replace('section_', 'seccion', $key);
+            $transformed[$newKey] = $value;
+        }
+
+        return response()->json($transformed, 200);
+    }
 }

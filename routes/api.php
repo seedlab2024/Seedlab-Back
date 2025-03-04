@@ -245,7 +245,7 @@ Route::group([
     Route::apiResource('/respuestas', RespuestasApiController::class);
     Route::post('/form/section/{id_empresa}/{sectionId}', [FormResponsesController::class, 'storeSection']);
     Route::get('/form/section/{sectionId}', [FormResponsesController::class, 'getSection']);
-    Route::get('/getRespuestasRedis/{empresaId}', [FormResponsesController::class, 'getAllRespuestasFromRedis']);
+    Route::get('/getAllRespuestasFromDB/{empresaId}', [FormResponsesController::class, 'getAllRespuestasFromDB']);
     Route::get('/verificarEstadoForm/{id_empresa}', [RespuestasApiController::class, 'verificarEstadoFormulario']);
 });
 

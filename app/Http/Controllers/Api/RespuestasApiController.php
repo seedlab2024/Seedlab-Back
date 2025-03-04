@@ -53,55 +53,49 @@ class RespuestasApiController extends Controller
     public function guardarRespuestas(Request $request)
     {
         $idEmpresa = $request->input('id_empresa');
+        // Se espera que 'respuestas' sea un array asociativo, por ejemplo:
+        // [ 'seccion1' => [...], 'seccion2' => [...], ... ]
+        $nuevasRespuestas = $request->input('respuestas');
 
-        // Verificar si ya existe un registro de respuestas para la primera vez
-        $primeraRespuesta = Respuesta::where('id_empresa', $idEmpresa)
+        // Si no es un array, se inicializa como uno vacío
+        if (!is_array($nuevasRespuestas)) {
+            $nuevasRespuestas = [];
+        }
+
+        // Intentar obtener el registro de la primera vez
+        $respuesta = Respuesta::where('id_empresa', $idEmpresa)
             ->where('verform_pr', 1)
             ->first();
 
-        if (!$primeraRespuesta) {
-            // Si no hay respuestas previas, se está llenando por primera vez
-            $respuestas = new Respuesta();
-            $respuestas->verform_pr = 1;  // Indicar que es la primera vez
-            $respuestas->verform_se = 0;  // Aún no se llena la segunda vez
+        if ($respuesta) {
+            // Si ya existe, se decodifica el JSON guardado para fusionar la nueva sección
+            $existentes = json_decode($respuesta->respuestas_json, true);
+            if (!is_array($existentes)) {
+                $existentes = [];
+            }
+            // Fusionar: se sobreescriben las claves que vienen en las nuevas respuestas
+            $fusionadas = array_replace($existentes, $nuevasRespuestas);
+            $respuesta->respuestas_json = json_encode($fusionadas);
+            $respuesta->save();
             $contador = 1;
         } else {
-            // Si ya existe un registro para la primera vez, se crea uno nuevo para la segunda vez
-            $segundaRespuesta = Respuesta::where('id_empresa', $idEmpresa)
-                ->where('verform_se', 1)
-                ->first();
-
-            if ($segundaRespuesta) {
-                return response()->json(['message' => 'El formulario ya fue llenado dos veces'], 400);
-            }
-
-            // Crear un nuevo registro para la segunda vez
-            $respuestas = new Respuesta();
-            $respuestas->verform_pr = 0;  // No es la primera vez
-            $respuestas->verform_se = 1;  // Indicar que es la segunda vez
-            $contador = 2;
+            // Si no existe, se crea el registro con las respuestas recibidas
+            $respuesta = new Respuesta();
+            $respuesta->verform_pr = 1;
+            $respuesta->verform_se = 0;
+            $respuesta->id_empresa = $idEmpresa;
+            $respuesta->respuestas_json = json_encode($nuevasRespuestas);
+            $respuesta->save();
+            $contador = 1;
         }
 
-        // Guardar las nuevas respuestas
-        $jsonRespuestas = json_encode($request->input('respuestas'));
-        $respuestas->respuestas_json = $jsonRespuestas;
-        $respuestas->id_empresa = $idEmpresa;
-        $respuestas->save();
-
-        // Borrar las secciones almacenadas en Redis después de guardar en la BD
-        $keys = [
-            "form:{$idEmpresa}:section:1",
-            "form:{$idEmpresa}:section:2",
-            "form:{$idEmpresa}:section:3",
-            "form:{$idEmpresa}:section:4",
-            "form:{$idEmpresa}:section:5",
-        ];
-
-        // Eliminar todas las claves de Redis para esta empresa y sus secciones
-        Redis::del($keys);
-
-        return response()->json(['message' => 'Respuestas guardadas correctamente', 'contador' => $contador], 200);
+        return response()->json([
+            'message' => 'Respuestas guardadas correctamente',
+            'contador' => $contador
+        ], 200);
     }
+
+
 
 
     public function verificarEstadoFormulario($id_empresa)
