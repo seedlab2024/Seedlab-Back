@@ -100,29 +100,74 @@ class RespuestasApiController extends Controller
 
     public function verificarEstadoFormulario($id_empresa)
     {
-        // Verificar si ya existe un registro de respuestas para la primera vez
+        // Buscar la primera respuesta
         $primeraRespuesta = Respuesta::where('id_empresa', $id_empresa)
             ->where('verform_pr', 1)
             ->first();
 
         if (!$primeraRespuesta) {
-            // Si no hay respuestas previas, es la primera vez
-            return response()->json(['contador' => 1], 200);
+            // No hay registro: se trata de la primera vez
+            return response()->json(['contador' => 1, 'message' => 'Primera vez no iniciada'], 200);
         }
 
-        // Verificar si ya fue llenado por segunda vez
+        // Decodificar las respuestas guardadas
+        $sections = json_decode($primeraRespuesta->respuestas_json, true) ?? [];
+
+        // Verificar que estén las 5 secciones
+        $requiredSections = ['section_1', 'section_2', 'section_3', 'section_4', 'section_5'];
+        $incompletas = [];
+        foreach ($requiredSections as $section) {
+            if (!array_key_exists($section, $sections) || empty($sections[$section])) {
+                $incompletas[] = $section;
+            }
+        }
+
+        if (!empty($incompletas)) {
+            // La primera vez está incompleta
+            return response()->json([
+                'contador' => 1,
+                'message' => 'La primera vez está incompleta. Faltan: ' . implode(', ', $incompletas)
+            ], 200);
+        }
+
+        // La primera vez está completa, ahora verificamos la segunda vez
         $segundaRespuesta = Respuesta::where('id_empresa', $id_empresa)
             ->where('verform_se', 1)
             ->first();
 
-        if ($segundaRespuesta) {
-            // Ya se ha llenado dos veces
-            return response()->json(['contador' => 3, 'message' => 'Formulario completado dos veces'], 403);
-        }
+        if (!$segundaRespuesta) {
+            // No existe registro de la segunda vez, así que contador = 2 (puede iniciarse)
+            return response()->json([
+                'contador' => 2,
+                'message' => 'Primera vez completa. Puedes iniciar la segunda vez'
+            ], 200);
+        } else {
+            // Sí existe un registro para la segunda vez. Revisamos si ya está completa
+            $sections2 = json_decode($segundaRespuesta->respuestas_json, true) ?? [];
+            $requiredSections = ['section_1', 'section_2', 'section_3', 'section_4', 'section_5'];
+            $incompletas2 = [];
+            foreach ($requiredSections as $section) {
+                if (!array_key_exists($section, $sections2) || empty($sections2[$section])) {
+                    $incompletas2[] = $section;
+                }
+            }
 
-        // Si ya se llenó la primera vez pero no la segunda
-        return response()->json(['contador' => 2], 200);
+            if (!empty($incompletas2)) {
+                // La segunda vez está iniciada pero incompleta
+                return response()->json([
+                    'contador' => 2,
+                    'message'  => 'La segunda vez está incompleta. Faltan: ' . implode(', ', $incompletas2)
+                ], 200);
+            } else {
+                // La segunda vez ya tiene las 5 secciones completas
+                return response()->json([
+                    'contador' => 3,
+                    'message'  => 'Formulario completado dos veces'
+                ], 403);
+            }
+        }
     }
+
 
 
 

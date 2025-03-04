@@ -243,9 +243,9 @@ Route::group([
 ], function () {
     Route::post('/guardar-respuestas', [RespuestasApiController::class, 'guardarRespuestas']);
     Route::apiResource('/respuestas', RespuestasApiController::class);
-    Route::post('/form/section/{id_empresa}/{sectionId}', [FormResponsesController::class, 'storeSection']);
+    Route::post('/form/section/{id_empresa}/{sectionId}/{vez}', [FormResponsesController::class, 'storeSection']);
     Route::get('/form/section/{sectionId}', [FormResponsesController::class, 'getSection']);
-    Route::get('/getAllRespuestasFromDB/{empresaId}', [FormResponsesController::class, 'getAllRespuestasFromDB']);
+    Route::get('/getAllRespuestasFromDB/{empresaId}/{vez}', [FormResponsesController::class, 'getAllRespuestasFromDB']);
     Route::get('/verificarEstadoForm/{id_empresa}', [RespuestasApiController::class, 'verificarEstadoFormulario']);
 });
 
