@@ -82,7 +82,7 @@ class RespuestasApiController extends Controller
             // Si no existe, se crea el registro con las respuestas recibidas
             $respuesta = new Respuesta();
             $respuesta->verform_pr = 1;
-            $respuesta->verform_se = 0;
+            $respuesta->verform_se = isset($respuesta->verform_se) ? $respuesta->verform_se : 0;
             $respuesta->id_empresa = $idEmpresa;
             $respuesta->respuestas_json = json_encode($nuevasRespuestas);
             $respuesta->save();
