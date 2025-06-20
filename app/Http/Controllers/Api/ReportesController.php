@@ -450,6 +450,48 @@ class ReportesController extends Controller
 
 
 
+    // public function mostrarReporteFormEmprendedor(Request $request)
+    // {
+    //     // Obtener parámetros de la solicitud.
+    //     $docEmprendedor = $request->input('doc_emprendedor');
+    //     $tipo_reporte = $request->input('tipo_reporte'); // 1 = Primera vez, 2 = Segunda vez
+    //     $empresa = $request->input('empresa');
+
+    //     // Construir la consulta utilizando joins para unir las tablas necesarias.
+    //     $query = DB::table('respuesta AS r')
+    //         ->join('empresa AS e', 'r.id_empresa', '=', 'e.documento')
+    //         ->join('puntaje AS p', 'p.documento_empresa', '=', 'e.documento')
+    //         ->select('r.verform_pr', 'r.verform_se', 'e.nombre AS nombre_empresa', 'p.*')
+    //         ->where('e.documento', $empresa) // Filtrar por documento de la empresa
+    //         ->where('e.id_emprendedor', $docEmprendedor); // Filtrar por ID del emprendedor
+
+    //     // Filtrar según el tipo de reporte solicitado
+    //     if ($tipo_reporte == '1') { // Primera vez
+    //         $query->where('r.verform_pr', 1)
+    //             ->where('r.verform_se', 0)
+    //             ->where('p.primera_vez', 1)
+    //             ->where('p.segunda_vez', 0);
+    //     } elseif ($tipo_reporte == '2') { // Segunda vez
+    //         $query->where('r.verform_pr', 0)
+    //             ->where('r.verform_se', 1)
+    //             ->where('p.primera_vez', 0)
+    //             ->where('p.segunda_vez', 1);
+    //     } else {
+    //         return response()->json(['error' => 'Tipo de reporte no válido'], 400);
+    //     }
+
+    //     // Ejecutar la consulta y obtener los resultados.
+    //     $resultados = $query->get();
+
+    //     if ($resultados->isEmpty()) {
+    //         return response()->json(['error' => 'No se encontraron resultados'], 404);
+    //     }
+
+    //     // Devolver los resultados en formato JSON.
+    //     return response()->json($resultados);
+    // }
+
+
     public function mostrarReporteFormEmprendedor(Request $request)
     {
         // Obtener parámetros de la solicitud.
@@ -467,15 +509,28 @@ class ReportesController extends Controller
 
         // Filtrar según el tipo de reporte solicitado
         if ($tipo_reporte == '1') { // Primera vez
-            $query->where('r.verform_pr', 1)
-                ->where('r.verform_se', 0)
-                ->where('p.primera_vez', 1)
-                ->where('p.segunda_vez', 0);
+            $query->where('p.primera_vez', 1)
+                ->where('p.segunda_vez', 0)
+                ->where(function ($query) {
+                    $query->where('r.verform_pr', 1)
+                            ->orWhereNull('r.verform_pr'); // Permitir valores NULL
+                })
+                ->where(function ($query) {
+                    $query->where('r.verform_se', 0)
+                            ->orWhereNull('r.verform_se'); // Permitir valores NULL
+                });
+
         } elseif ($tipo_reporte == '2') { // Segunda vez
-            $query->where('r.verform_pr', 0)
-                ->where('r.verform_se', 1)
-                ->where('p.primera_vez', 0)
-                ->where('p.segunda_vez', 1);
+            $query->where('p.primera_vez', 0)
+                ->where('p.segunda_vez', 1)
+                ->where(function ($query) {
+                    $query->where('r.verform_pr', 0)
+                            ->orWhereNull('r.verform_pr'); // Permitir valores NULL
+                })
+                ->where(function ($query) {
+                    $query->where('r.verform_se', 1)
+                            ->orWhereNull('r.verform_se'); // Permitir valores NULL
+                });
         } else {
             return response()->json(['error' => 'Tipo de reporte no válido'], 400);
         }
@@ -490,4 +545,5 @@ class ReportesController extends Controller
         // Devolver los resultados en formato JSON.
         return response()->json($resultados);
     }
+
 }
